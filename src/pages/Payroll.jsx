@@ -1,0 +1,21 @@
+import {useEffect,useMemo,useState} from 'react';
+import {WalletCards,Plus,Search,SlidersHorizontal} from 'lucide-react';
+import {api} from '../lib/api';
+import {Loading,PageHeader,Badge,Modal,Empty} from '../components/ui';
+import {money} from '../lib/format';
+import {useAuth} from '../hooks/useAuth';
+
+export default function Payroll(){
+  const {has}=useAuth(),[d,setD]=useState(null),[open,setOpen]=useState(false),[q,setQ]=useState(''),[year,setYear]=useState(''),[status,setStatus]=useState('');
+  const load=()=>api('/payroll').then(setD);useEffect(()=>{load()},[]);
+  const periods=useMemo(()=>!d?[]:(d.periods||[]).filter(p=>{const text=`${p.salary_name||''} ${p.salary_code||''}`.toLowerCase();return (!q||text.includes(q.toLowerCase()))&&(!year||String(p.salary_year)===year)&&(!status||p.status===status)}),[d,q,year,status]);
+  if(!d)return <Loading/>;
+  const years=[...new Set((d.periods||[]).map(x=>x.salary_year))].sort((a,b)=>b-a);
+  return <>
+    <PageHeader eyebrow="TIỀN LƯƠNG" title="Quản lý tiền lương" subtitle="Các kỳ lương và tổng hợp số liệu theo tháng." actions={has('payroll.manage')&&<button className="btn primary" onClick={()=>setOpen(true)}><Plus size={17}/> Tạo kỳ lương</button>}/>
+    <section className="card filter-card page-filter-card"><div className="filters payroll-filters"><label className="search-box"><Search size={17}/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Tên kỳ lương, mã kỳ lương..."/></label><select value={year} onChange={e=>setYear(e.target.value)}><option value="">Tất cả năm</option>{years.map(y=><option key={y} value={y}>{y}</option>)}</select><select value={status} onChange={e=>setStatus(e.target.value)}><option value="">Tất cả trạng thái</option><option value="draft">Nháp</option><option value="calculated">Đã tính</option><option value="approved">Đã duyệt</option><option value="paid">Đã thanh toán</option></select><button className="btn filter-auto" type="button"><SlidersHorizontal size={16}/> Lọc tự động</button></div></section>
+    <section className="card data-card"><div className="card-head"><div><h3>Các kỳ lương</h3><p>{periods.length} kết quả</p></div><span className="internal-data">Dữ liệu tài chính nội bộ</span></div><div className="table-wrap"><table><thead><tr><th>Kỳ lương</th><th>Nhân sự</th><th>Tổng gross</th><th>Khấu trừ</th><th>Thực lãnh</th><th>Trạng thái</th></tr></thead><tbody>{periods.map(p=><tr key={p.id??p._id}><td><strong>{p.salary_name||`Bảng lương ${p.salary_month}/${p.salary_year}`}</strong><small className="block">{p.salary_code}</small></td><td>{p.total_employee??p.items?.length??0}</td><td>{money(p.total_gross)}</td><td>{money(p.total_deduction)}</td><td><strong>{money(p.total_net)}</strong></td><td><Badge value={p.status}/></td></tr>)}</tbody></table>{!periods.length&&<Empty title="Không có kỳ lương phù hợp"/>}</div></section>
+    <Modal open={open} onClose={()=>setOpen(false)} title="Tạo kỳ lương"><PeriodForm done={()=>{setOpen(false);load()}}/></Modal>
+  </>;
+}
+function PeriodForm({done}){const now=new Date(),[f,setF]=useState({month:now.getMonth()+1,year:now.getFullYear(),name:'',salary_code:'',standard_work_days:26,status:'draft',note:''});const submit=async e=>{e.preventDefault();await api('/payroll/periods',{method:'POST',body:JSON.stringify(f)});done()};return <form className="form-stack modal-form" onSubmit={submit}><div className="two-col"><label>Tháng<input type="number" min="1" max="12" value={f.month} onChange={e=>setF({...f,month:e.target.value})}/></label><label>Năm<input type="number" value={f.year} onChange={e=>setF({...f,year:e.target.value})}/></label></div><label>Tên kỳ lương<input value={f.name} onChange={e=>setF({...f,name:e.target.value})} placeholder={`Bảng lương ${f.month}/${f.year}`}/></label><div className="two-col"><label>Mã kỳ lương<input value={f.salary_code} onChange={e=>setF({...f,salary_code:e.target.value})}/></label><label>Công chuẩn<input type="number" step="0.5" value={f.standard_work_days} onChange={e=>setF({...f,standard_work_days:e.target.value})}/></label></div><label>Ghi chú<textarea rows="3" value={f.note} onChange={e=>setF({...f,note:e.target.value})}/></label><div className="modal-actions"><button type="button" className="btn" onClick={done}>Hủy</button><button className="btn primary">Tạo kỳ lương</button></div></form>}

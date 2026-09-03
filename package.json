@@ -1,0 +1,24 @@
+{
+  "name": "th79-hrm-frontend-vercel",
+  "version": "9.4.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^5.0.2",
+    "vite": "^7.1.4",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-router-dom": "^7.8.2",
+    "lucide-react": "^0.542.0",
+    "recharts": "^3.1.2"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=20"
+  }
+}

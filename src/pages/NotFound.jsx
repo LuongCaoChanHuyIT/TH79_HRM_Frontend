@@ -1,0 +1,1 @@
+import {Link} from 'react-router-dom';export default function NotFound(){return <div className="not-found"><strong>404</strong><h1>Không tìm thấy trang</h1><p>Đường dẫn không tồn tại hoặc bạn không có quyền truy cập.</p><Link className="btn primary" to="/">Về Dashboard</Link></div>}

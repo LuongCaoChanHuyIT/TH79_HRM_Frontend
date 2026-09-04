@@ -45,6 +45,9 @@ export function AuthProvider({ children }) {
       method: 'POST',
       body: JSON.stringify({ login: loginValue, password })
     });
+    if (result?.token) {
+      localStorage.setItem('th79_token', result.token);
+    }
     setUser(result.user);
     // Future bootstrap checks should reflect the newly authenticated user.
     bootstrapSessionPromise = Promise.resolve({ authenticated: true, user: result.user });
@@ -55,6 +58,7 @@ export function AuthProvider({ children }) {
     try {
       await api('/auth/logout', { method: 'POST' });
     } finally {
+      localStorage.removeItem('th79_token');
       setUser(null);
       bootstrapSessionPromise = Promise.resolve({ authenticated: false, user: null });
     }

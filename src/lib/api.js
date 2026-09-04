@@ -17,12 +17,14 @@ export async function api(path, options = {}) {
     throw new Error('Thiếu mã định danh dữ liệu. Vui lòng tải lại danh sách trước khi mở chi tiết.');
   }
 
+  const storedToken = typeof window !== 'undefined' ? localStorage.getItem('th79_token') : null;
   const isForm = options.body instanceof FormData;
   const res = await fetch(apiUrl(cleanPath), {
     credentials: 'include',
     ...options,
     headers: {
       ...(isForm ? {} : { 'Content-Type': 'application/json' }),
+      ...(storedToken ? { Authorization: `Bearer ${storedToken}` } : {}),
       ...(options.headers || {})
     }
   });

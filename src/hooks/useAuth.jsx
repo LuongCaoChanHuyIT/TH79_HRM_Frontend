@@ -17,7 +17,14 @@ function loadBootstrapSession() {
 }
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('th79_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -26,10 +33,22 @@ export function AuthProvider({ children }) {
     loadBootstrapSession()
       .then(result => {
         if (!active) return;
-        setUser(result?.authenticated ? result.user : null);
+        if (result?.authenticated && result?.user) {
+          setUser(result.user);
+          localStorage.setItem('th79_user', JSON.stringify(result.user));
+        } else if (result?.authenticated === false) {
+          localStorage.removeItem('th79_token');
+          localStorage.removeItem('th79_user');
+          setUser(null);
+        }
       })
       .catch(() => {
-        if (active) setUser(null);
+        if (!active) return;
+        const storedToken = localStorage.getItem('th79_token');
+        const storedUser = localStorage.getItem('th79_user');
+        if (!storedToken || !storedUser) {
+          setUser(null);
+        }
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -48,8 +67,10 @@ export function AuthProvider({ children }) {
     if (result?.token) {
       localStorage.setItem('th79_token', result.token);
     }
-    setUser(result.user);
-    // Future bootstrap checks should reflect the newly authenticated user.
+    if (result?.user) {
+      localStorage.setItem('th79_user', JSON.stringify(result.user));
+      setUser(result.user);
+    }
     bootstrapSessionPromise = Promise.resolve({ authenticated: true, user: result.user });
     return result;
   };
@@ -59,6 +80,7 @@ export function AuthProvider({ children }) {
       await api('/auth/logout', { method: 'POST' });
     } finally {
       localStorage.removeItem('th79_token');
+      localStorage.removeItem('th79_user');
       setUser(null);
       bootstrapSessionPromise = Promise.resolve({ authenticated: false, user: null });
     }

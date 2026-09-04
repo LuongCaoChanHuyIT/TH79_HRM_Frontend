@@ -36,6 +36,15 @@ export async function api(path, options = {}) {
     try {
       payload = type.includes('json') ? await res.json() : { message: await res.text() };
     } catch {}
+    if (res.status === 401 && !cleanPath.startsWith('/auth/login') && !cleanPath.startsWith('/auth/session')) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('th79_token');
+        localStorage.removeItem('th79_user');
+        if (!window.location.pathname.startsWith('/login')) {
+          window.location.href = '/login';
+        }
+      }
+    }
     const err = new Error(payload.message || `HTTP ${res.status}`);
     err.status = res.status;
     err.payload = payload;

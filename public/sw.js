@@ -1,4 +1,4 @@
-const CACHE='th79-hrm-shell-v12-v93-ui-data-fix';
+const CACHE='th79-hrm-shell-v13-v96-payroll-bulk-delete';
 const SHELL=['/','/manifest.webmanifest','/assets/images/logo-th79.png','/assets/images/app-icon-192.png','/assets/images/app-icon-512.png'];
 self.addEventListener('install',event=>{self.skipWaiting();event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).catch(()=>{}));});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});

@@ -1,12 +1,18 @@
 import {useEffect,useMemo,useState} from 'react';
 import {useNavigate,useParams} from 'react-router-dom';
-import {ArrowLeft,Save,ShieldCheck,Paperclip,UploadCloud,FileText,BriefcaseBusiness,ContactRound,FolderUp} from 'lucide-react';
+import {ArrowLeft,Save,ShieldCheck,Paperclip,UploadCloud,FileText,BriefcaseBusiness,ContactRound,FolderUp,WalletCards,Banknote,UsersRound} from 'lucide-react';
 import {api} from '../lib/api';
-import {Loading} from '../components/ui';
+import {Loading,Toast} from '../components/ui';
 import {entityId,entityKey} from '../lib/format';
 import {useAuth} from '../hooks/useAuth';
 
-const initial={employee_code:'',full_name:'',gender:'unknown',date_of_birth:'',professional_qualification:'',identity_number:'',permanent_address:'',current_address:'',phone:'',email:'',social_insurance_number:'',social_insurance_status:'unknown',join_date:'',probation_end_date:'',recruitment_decision_no:'',employment_status:'probation',branch_id:'',department_id:'',position_id:'',contract_status_id:'',note:''};
+const initial={
+  employee_code:'',full_name:'',gender:'unknown',date_of_birth:'',professional_qualification:'',identity_number:'',
+  permanent_address:'',current_address:'',phone:'',email:'',social_insurance_number:'',social_insurance_status:'unknown',
+  join_date:'',probation_end_date:'',recruitment_decision_no:'',employment_status:'probation',branch_id:'',department_id:'',position_id:'',contract_status_id:'',
+  bank_account_number:'',bank_name:'',tax_dependents:0,note:'',
+  base_salary:0,probation_salary:0,insurance_salary:0,lunch_allowance:0,fuel_allowance:0,phone_allowance:0,attendance_allowance:0,other_allowance:0,salary_effective_from:''
+};
 
 export default function EmployeeForm(){
   const {id}=useParams();
@@ -18,7 +24,7 @@ export default function EmployeeForm(){
   const [files,setFiles]=useState({});
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState('');
-  const [uploadStatus,setUploadStatus]=useState('');
+  const [toast,setToast]=useState(null);
 
   useEffect(()=>{
     let active=true;
@@ -29,31 +35,44 @@ export default function EmployeeForm(){
     Promise.all(jobs).then(([l,r])=>{
       if(!active)return;
       setLook(l);
-      if(r)setForm({...initial,...normalize(r.employee)});
+      if(r){
+        const salary=(r.salaryProfiles||[])[0]||{};
+        setForm({...initial,...normalize(r.employee),...normalizeSalary(salary)});
+      }
     }).catch(e=>active&&setError(e.message));
     return()=>{active=false};
   },[id,edit]);
 
+  useEffect(()=>{
+    if(!toast)return;
+    const timer=setTimeout(()=>setToast(null),3600);
+    return()=>clearTimeout(timer);
+  },[toast]);
+
   const requiredDocs=useMemo(()=>((look?.documentTypes||[]).filter(x=>x.is_required===1||x.is_required===true)).slice(0,4),[look]);
   if(!look&&!error)return <Loading/>;
   const set=(k,v)=>setForm(f=>({...f,[k]:v}));
+  const notify=(message,tone='success')=>setToast({message,tone,key:Date.now()});
 
   const uploadDocuments=async employeeId=>{
     const selected=Object.entries(files).filter(([,file])=>file);
-    if(!selected.length)return;
-    setUploadStatus(`Đang tải ${selected.length} hồ sơ...`);
+    if(!selected.length)return 0;
+    notify(`Đang tải ${selected.length} hồ sơ lên Cloudinary...`);
+    let uploaded=0;
     for(const [typeId,file] of selected){
       const fd=new FormData();
       fd.append('employee_id',employeeId);
       fd.append('document_type_id',typeId);
       fd.append('file',file);
       await api('/documents/upload',{method:'POST',body:fd});
+      uploaded++;
     }
-    setUploadStatus('Đã tải hồ sơ thành công.');
+    notify(`Đã tải ${uploaded} hồ sơ lên Cloudinary thành công.`);
+    return uploaded;
   };
 
   const submit=async e=>{
-    e.preventDefault();setBusy(true);setError('');setUploadStatus('');
+    e.preventDefault();setBusy(true);setError('');
     try{
       let employeeId=id;
       if(edit){
@@ -64,8 +83,9 @@ export default function EmployeeForm(){
         if(!employeeId)throw new Error('Đã tạo hồ sơ nhưng API không trả về mã định danh.');
       }
       if(has('document.upload'))await uploadDocuments(employeeId);
-      nav(`/employees/${encodeURIComponent(employeeId)}`);
-    }catch(e){setError(e.message)}finally{setBusy(false)}
+      notify(edit?'Đã cập nhật hồ sơ nhân viên.':'Đã tạo nhân viên mới.');
+      setTimeout(()=>nav(`/employees/${encodeURIComponent(employeeId)}`),350);
+    }catch(e){setError(e.message);notify(e.message||'Không thể lưu hồ sơ.','error')}finally{setBusy(false)}
   };
 
   const options=(rows,labelKey,prefix)=>(rows||[]).map((x,i)=>{
@@ -74,16 +94,16 @@ export default function EmployeeForm(){
   });
 
   return <>
+    {toast&&<Toast key={toast.key} message={toast.message} tone={toast.tone} onClose={()=>setToast(null)}/>}    
     <div className="employee-form-heading">
       <button className="back-link" type="button" onClick={()=>nav(-1)}><ArrowLeft/> Quay lại</button>
       <h1>{edit?'Chỉnh sửa hồ sơ nhân viên':'Thêm nhân viên mới'}</h1>
-      <p>{edit?'Cập nhật thông tin nhân sự và hồ sơ liên quan.':'Nhập thông tin nhân sự và số hoá hồ sơ ngay trong một lần thao tác.'}</p>
+      <p>{edit?'Cập nhật thông tin nhân sự, cơ cấu và cấu hình lương.':'Nhập thông tin nhân sự, lương và số hoá hồ sơ ngay trong một lần thao tác.'}</p>
     </div>
 
     <form className="employee-form-layout" onSubmit={submit}>
       <div className="employee-form-main">
         {error&&<div className="form-error">{error}</div>}
-        {uploadStatus&&<div className="notice success-panel">{uploadStatus}</div>}
 
         <section className="card employee-form-card">
           <div className="form-card-title"><div><h3>Thông tin cá nhân</h3><p>Thông tin định danh và liên hệ của nhân viên</p></div><span><ContactRound/></span></div>
@@ -110,7 +130,7 @@ export default function EmployeeForm(){
               const file=files[docId];
               return <label className={`document-upload-card ${file?'selected':''}`} key={entityKey(doc,`doc-${i}`)}>
                 <div className="document-upload-head"><span><FileText/></span><div><strong>{doc.document_name}</strong><small>{file?file.name:'Chưa có hồ sơ — nên tải lên ngay'}</small></div><em>{file?'Đã chọn':'Còn thiếu'}</em></div>
-                <div className="document-drop"><UploadCloud/><span><strong>{file?'Đổi file':'Bấm để chọn PDF / ảnh scan'}</strong><small>{file?`${Math.round(file.size/1024)} KB`:'Có thể chọn nhiều file cùng lúc theo từng loại'}</small></span></div>
+                <div className="document-drop"><UploadCloud/><span><strong>{file?'Đổi file':'Bấm để chọn PDF / ảnh scan'}</strong><small>{file?`${Math.round(file.size/1024)} KB`:'PDF, PNG, JPG, WEBP'}</small></span></div>
                 <input type="file" accept="application/pdf,image/png,image/jpeg,image/webp" hidden onChange={e=>setFiles(x=>({...x,[docId]:e.target.files?.[0]||null}))}/>
               </label>;
             })}
@@ -133,17 +153,37 @@ export default function EmployeeForm(){
             <Field label="Ghi chú" wide><textarea value={form.note||''} onChange={e=>set('note',e.target.value)} placeholder="Ghi chú nội bộ"/></Field>
           </div>
         </section>
+
+        {has('payroll.manage')&&<section className="card employee-form-card salary-config-card">
+          <div className="form-card-title"><div><span className="mini-kicker"><WalletCards/> CẤU HÌNH LƯƠNG</span><h3>Lương & thông tin thanh toán</h3><p>Dữ liệu này được tự động lấy vào kỳ lương hàng tháng.</p></div><span><Banknote/></span></div>
+          <div className="salary-guidance"><ShieldCheck/><span>Lương chính thức và lương thử việc được lưu vào hồ sơ lương. Kế toán vẫn có thể điều chỉnh từng kỳ lương trước khi duyệt.</span></div>
+          <div className="form-grid three-form-cols salary-form-grid">
+            <Field label="Lương chính thức"><MoneyInput value={form.base_salary} onChange={v=>set('base_salary',v)} placeholder="8.500.000"/></Field>
+            <Field label="Lương thử việc"><MoneyInput value={form.probation_salary} onChange={v=>set('probation_salary',v)} placeholder="7.225.000"/></Field>
+            <Field label="Lương đóng bảo hiểm"><MoneyInput value={form.insurance_salary} onChange={v=>set('insurance_salary',v)} placeholder="Mặc định theo lương chính thức"/></Field>
+            <Field label="Phụ cấp ăn trưa"><MoneyInput value={form.lunch_allowance} onChange={v=>set('lunch_allowance',v)}/></Field>
+            <Field label="Phụ cấp xăng xe"><MoneyInput value={form.fuel_allowance} onChange={v=>set('fuel_allowance',v)}/></Field>
+            <Field label="Phụ cấp điện thoại"><MoneyInput value={form.phone_allowance} onChange={v=>set('phone_allowance',v)}/></Field>
+            <Field label="Phụ cấp chuyên cần"><MoneyInput value={form.attendance_allowance} onChange={v=>set('attendance_allowance',v)}/></Field>
+            <Field label="Phụ cấp khác"><MoneyInput value={form.other_allowance} onChange={v=>set('other_allowance',v)}/></Field>
+            <Field label="Hiệu lực lương từ"><input type="date" value={form.salary_effective_from||form.join_date||''} onChange={e=>set('salary_effective_from',e.target.value)}/></Field>
+            <Field label="Số tài khoản ngân hàng"><input value={form.bank_account_number||''} onChange={e=>set('bank_account_number',e.target.value)} placeholder="Số tài khoản nhận lương"/></Field>
+            <Field label="Ngân hàng"><input value={form.bank_name||''} onChange={e=>set('bank_name',e.target.value)} placeholder="VD: OCB, VCB, MB..."/></Field>
+            <Field label="Số người phụ thuộc"><input type="number" min="0" step="1" value={form.tax_dependents||0} onChange={e=>set('tax_dependents',e.target.value)}/></Field>
+          </div>
+        </section>}
       </div>
 
       <aside className="employee-form-side">
         <div className="card sticky-employee-create">
           <span className="side-icon"><ShieldCheck/></span>
           <h3>{edit?'Cập nhật hồ sơ':'Tạo hồ sơ mới'}</h3>
-          <p>{edit?'Mọi thay đổi sẽ được ghi vào lịch sử hoạt động.':'Thông tin nhân sự và hồ sơ scan được lưu cùng lúc. Checklist sẽ cập nhật sau khi tải file thành công.'}</p>
+          <p>{edit?'Mọi thay đổi sẽ được ghi vào lịch sử hoạt động.':'Thông tin nhân sự, lương và hồ sơ scan được lưu cùng lúc.'}</p>
           <div className="create-checklist">
-            {requiredDocs.map((doc,i)=>{const id=entityId(doc)||doc.id||i+1;return <span key={entityKey(doc,`side-${i}`)} className={files[id]?'done':''}><i/>{doc.document_name}</span>})}
+            {requiredDocs.map((doc,i)=>{const docId=entityId(doc)||doc.id||i+1;return <span key={entityKey(doc,`side-${i}`)} className={files[docId]?'done':''}><i/>{doc.document_name}</span>})}
           </div>
           {has('document.upload')&&<a className="attach-jump" href="#employee-document-upload"><Paperclip/> Đính kèm hồ sơ <span>PDF / ảnh scan</span></a>}
+          {has('payroll.manage')&&<div className="salary-side-summary"><UsersRound/><span><small>Lương áp dụng</small><strong>{formatMoney(form.employment_status==='probation'?(form.probation_salary||form.base_salary):form.base_salary)}</strong></span></div>}
           <div className="storage-ready"><ShieldCheck/> Kho hồ sơ bảo mật sẵn sàng</div>
           <button className="btn primary create-submit" disabled={busy||Boolean(error&&!look)}><Save/>{busy?'Đang lưu...':edit?'Lưu thay đổi':'Tạo nhân viên'}</button>
           <button type="button" className="btn ghost" onClick={()=>nav(-1)}>Hủy</button>
@@ -154,4 +194,7 @@ export default function EmployeeForm(){
 }
 
 function Field({label,required,wide,children}){return <label className={wide?'wide':''}><span>{label}{required&&' *'}</span>{children}</label>}
+function MoneyInput({value,onChange,placeholder='0'}){return <input type="number" min="0" step="1000" value={Number(value)||''} onChange={e=>onChange(e.target.value)} placeholder={placeholder}/>}
 function normalize(e){const o={...e};for(const k of ['date_of_birth','join_date','probation_end_date'])if(o[k])o[k]=String(o[k]).slice(0,10);return o}
+function normalizeSalary(s){const o={...s};if(o.effective_from)o.salary_effective_from=String(o.effective_from).slice(0,10);delete o.effective_from;return o}
+function formatMoney(v){return new Intl.NumberFormat('vi-VN',{style:'currency',currency:'VND',maximumFractionDigits:0}).format(Number(v)||0)}

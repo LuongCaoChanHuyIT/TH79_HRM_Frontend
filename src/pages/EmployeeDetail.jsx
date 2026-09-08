@@ -183,8 +183,8 @@ export default function EmployeeDetail(){
 
     {has('payroll.view')&&<section className="card ed-section" id="salary">
       <SectionHead title="Thông tin lương" subtitle="Lịch sử cấu hình lương theo thời gian" right={<Link to="/payroll" className="ed-text-link">Mở tiền lương</Link>}/>
-      <div className="ed-table-wrap"><table className="ed-table"><thead><tr><th>Hiệu lực từ</th><th>Lương cơ bản</th><th>Ăn trưa</th><th>Xăng xe</th><th>Điện thoại</th><th>Chuyên cần</th></tr></thead><tbody>
-        {salaryProfiles.length?salaryProfiles.map((s,i)=><tr key={entityKey(s,`salary-${i}`)}><td>{fmtDate(s.effective_from)}</td><td>{money(s.base_salary)}</td><td>{money(s.lunch_allowance)}</td><td>{money(s.fuel_allowance)}</td><td>{money(s.phone_allowance)}</td><td>{money(s.attendance_allowance)}</td></tr>):<tr><td colSpan="6" className="ed-empty-cell">Chưa cấu hình hồ sơ lương.</td></tr>}
+      <div className="ed-table-wrap"><table className="ed-table"><thead><tr><th>Hiệu lực từ</th><th>Lương chính thức</th><th>Lương thử việc</th><th>Lương đóng BH</th><th>Ăn trưa</th><th>Xăng xe</th><th>Điện thoại</th><th>Chuyên cần</th></tr></thead><tbody>
+        {salaryProfiles.length?salaryProfiles.map((s,i)=><tr key={entityKey(s,`salary-${i}`)}><td>{fmtDate(s.effective_from)}</td><td>{money(s.base_salary)}</td><td>{money(s.probation_salary)}</td><td>{money(s.insurance_salary||s.base_salary)}</td><td>{money(s.lunch_allowance)}</td><td>{money(s.fuel_allowance)}</td><td>{money(s.phone_allowance)}</td><td>{money(s.attendance_allowance)}</td></tr>):<tr><td colSpan="8" className="ed-empty-cell">Chưa cấu hình hồ sơ lương.</td></tr>}
       </tbody></table></div>
     </section>}
 

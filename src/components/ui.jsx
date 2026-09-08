@@ -1,4 +1,4 @@
-import {LoaderCircle} from 'lucide-react';
+import {LoaderCircle,CheckCircle2,TriangleAlert} from 'lucide-react';
 import {statusLabel} from '../lib/format';
 
 export function Loading({label='Đang tải dữ liệu...'}){
@@ -45,5 +45,15 @@ export function Modal({open,title,onClose,children,wide=false}){
       <div className="modal-head"><h3>{title}</h3><button className="icon-button" type="button" onClick={onClose}>×</button></div>
       <div className="modal-body">{children}</div>
     </div>
+  </div>;
+}
+
+
+export function Toast({message,tone='success',onClose}){
+  if(!message)return null;
+  return <div className={`app-toast ${tone==='error'?'error':''}`} role="status" aria-live="polite">
+    {tone==='error'?<TriangleAlert/>:<CheckCircle2/>}
+    <span>{message}</span>
+    <button type="button" onClick={onClose} aria-label="Đóng thông báo">×</button>
   </div>;
 }

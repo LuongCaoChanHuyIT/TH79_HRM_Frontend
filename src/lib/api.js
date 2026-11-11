@@ -3,7 +3,7 @@ const rawBase = String(import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/
 // VITE_API_URL chỉ chứa origin backend, ví dụ https://api.hrm.daututh79.com
 // Local dev để trống => Vite proxy /api -> http://localhost:5000.
 export const API_ORIGIN = rawBase;
-
+ 
 export function apiUrl(path = '') {
   const cleanPath = String(path || '');
   const normalized = cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
